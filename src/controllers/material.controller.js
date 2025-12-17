@@ -1,6 +1,5 @@
 import { pool } from "../db/connectDB.js";
-import path from "path";
-import fs from "fs-extra";
+import { supabase } from "../lib/supabase.js";
 
 export const uploadMaterial = async (req, res) => {
   let connection;
@@ -36,8 +35,26 @@ export const uploadMaterial = async (req, res) => {
       return res.status(400).json({ message: "Faltan datos obligatorios" });
     }
 
-    const filePath = req.file.path; // 👈 multer
+    // 🔥 1️⃣ SUBIR PDF A SUPABASE
+    const file = req.file;
 
+    const fileName = `${Date.now()}_${file.originalname}`;
+    const filePath = `materials/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("materiales")
+      .upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from("materiales").getPublicUrl(filePath);
+
+    const fileUrl = data.publicUrl; // ✅ ESTO VA A LA BD
+
+    // 🔁 2️⃣ TRANSACCIÓN BD
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
@@ -64,7 +81,7 @@ export const uploadMaterial = async (req, res) => {
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `,
       [
-        filePath,
+        fileUrl, // 🔥 URL pública
         titulo,
         descripcion,
         isbn_doi || null,
@@ -84,7 +101,7 @@ export const uploadMaterial = async (req, res) => {
 
     const materialId = result.insertId;
 
-    // ✍️ autores
+    // ✍️ 3️⃣ AUTORES (igual que antes)
     const authorsArray = autor
       .split(",")
       .map((a) => a.trim())
@@ -117,6 +134,7 @@ export const uploadMaterial = async (req, res) => {
     res.status(201).json({
       message: "Material enviado a revisión",
       id_material: materialId,
+      url: fileUrl,
     });
   } catch (error) {
     if (connection) await connection.rollback();
@@ -350,7 +368,13 @@ export const viewMaterial = async (req, res) => {
     const { id_material } = req.params;
 
     const [[material]] = await pool.query(
-      "SELECT ruta_archivo FROM materiales_academicos WHERE id_material = ?",
+      `SELECT 
+      id_material,
+      titulo,
+      descripcion,
+      ruta_archivo
+     FROM materiales_academicos
+     WHERE id_material = ?`,
       [id_material]
     );
 
@@ -358,16 +382,7 @@ export const viewMaterial = async (req, res) => {
       return res.status(404).json({ message: "Material no encontrado" });
     }
 
-    const filePath = path.resolve(material.ruta_archivo);
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: "Archivo no existe" });
-    }
-
-    res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", "inline");
-
-    fs.createReadStream(filePath).pipe(res);
+    res.json(material);
   } catch (error) {
     res.status(500).json({ message: "Error al visualizar material" });
   }
