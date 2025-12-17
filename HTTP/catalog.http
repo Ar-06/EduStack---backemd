@@ -1,0 +1,11 @@
+### GET CATEGORIES
+GET http://localhost:3000/api/catalogs/categories
+
+### GET TYPES
+GET http://localhost:3000/api/catalogs/types
+
+### GET LANGUAGES
+GET http://localhost:3000/api/catalogs/languages
+
+### GET LEVELS
+GET http://localhost:3000/api/catalogs/level

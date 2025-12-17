@@ -1,0 +1,17 @@
+### Subida de materiales
+POST http://localhost:3000/api/materials/upload
+Content-Type: multipart/form-data
+
+titulo=Titulo+de+la+tesis
+autor=Autor+de+la+tesis
+descripcion=Descripcion+de+la+tesis
+id_cat=1
+id_tipo=1
+editorial=Editorial+de+la+tesis
+anio=2023
+isbn_doi=123456789
+paginas=100
+id_idioma=1
+id_nivel=1
+
+@archivo.pdf 
