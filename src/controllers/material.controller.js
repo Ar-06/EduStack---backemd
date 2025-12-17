@@ -146,7 +146,7 @@ export const uploadMaterial = async (req, res) => {
 };
 
 export const getMaterials = async (req, res) => {
-  const { categoria, tipo, idioma, nivel } = req.query;
+  const { categoria, tipo, idioma, nivel, search } = req.query;
 
   let filters = [];
   let values = [];
@@ -169,6 +169,11 @@ export const getMaterials = async (req, res) => {
   if (nivel) {
     filters.push("m.id_nivel = ?");
     values.push(nivel);
+  }
+
+  if (search) {
+    filters.push("m.titulo LIKE ?");
+    values.push(`%${search}%`);
   }
 
   const whereClause = filters.length ? " AND " + filters.join(" AND ") : "";
